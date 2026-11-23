@@ -1,0 +1,38 @@
+[project]
+name = "open-data-elt"
+version = "0.1.0"
+description = "ELT pipeline for Malaysian open data: dlt + DuckDB/MotherDuck + dbt"
+readme = "README.md"
+authors = [
+    { name = "zeeqy", email = "168631630+zeeqy@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dlt[duckdb]>=1.32.0",
+    "requests>=2.34.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
+]
+
+[project.scripts]
+elt = "open_data_elt.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: hits the real APIs (skipped unless -m live)"]
+addopts = "-m 'not live'"
