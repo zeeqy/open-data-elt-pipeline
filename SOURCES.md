@@ -8,7 +8,7 @@ All checked by hand on 2026-11-23. Cost: RM 0, no API key needed.
 | `fuelprice` | Ministry of Finance via data.gov.my | API + parquet | 2 rows per week: `series_type` = `level` and `change_weekly` | 2017-03-30 → 2026-11-19 | Weekly (Wednesday night) |
 | `cpi_headline` | DOSM | API + parquet (`cpi_2d.parquet`) | 1 row per month per MCOICOP division (`overall`, `01`–`13`) | 1980-01 → 2026-10 | Monthly (API meta gives `next_update`) |
 | `mcoicop` | DOSM | API + parquet | Lookup: division/group/class codes → English + Malay names | n/a | Rarely |
-| USD/MYR exchange rate | Bank Negara Malaysia Open API | `GET /public/exchange-rate/USD/year/{y}/month/{m}?session=1200` | 1 row per business day (buying, selling, middle) | Same API used in project 03 | Daily |
+| USD/MYR exchange rate | Bank Negara Malaysia Open API | `GET /public/exchange-rate/USD/year/{y}/month/{m}?session=1200` | 1 row per business day (buying, selling, middle) | 2017-01-03 → 2026-11-20 (2,419 days, loaded from 2017 to cover fuel history) | Daily |
 
 ## Endpoints
 
@@ -31,6 +31,18 @@ All checked by hand on 2026-11-23. Cost: RM 0, no API key needed.
 - The CPI parquet stores `date` as a timestamp (`1980-01-01 00:00:00`), the others as a date. Staging casts all to `date`.
 - Probe on 2026-11-23 (`uv run elt probe`): ridership 2,861 rows (no missing days), fuel 975, CPI 7,868 (562 months × 14 divisions), mcoicop 343. All primary keys unique.
 - CPI division codes follow MCOICOP (13 divisions, `07` = Transport). Names come from the `mcoicop` lookup, not typed by hand.
+
+## Load policy (M2)
+
+| Table | First run / `--backfill` | Later runs | Write | Revision window |
+|---|---|---|---|---|
+| ridership_headline | parquet | API `date_start` | merge on `date` | 35 days |
+| fuelprice | parquet | API `date_start` | merge on `date, series_type` | 35 days |
+| cpi_headline | parquet | API `date_start` | merge on `date, division` | 100 days |
+| mcoicop | parquet | parquet | replace | n/a |
+| bnm_exchange_rate | API month by month from 2017-01 | API from the month of the last fixing | merge on `currency, date` | current month |
+
+Schema drift: new columns are added; a missing required column (see `required_columns` in `src/open_data_elt/sources.py`) or a changed data type stops the load before anything is written.
 
 ## License
 

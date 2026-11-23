@@ -12,3 +12,4 @@ dbt/target/
 dbt/logs/
 dbt/dbt_packages/
 node_modules/
+data/.dlt/
