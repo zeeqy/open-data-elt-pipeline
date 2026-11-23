@@ -1,0 +1,15 @@
+service_code,service_name,mode,operator,region,is_rapid_kl_rail
+rail_lrt_ampang,LRT Ampang & Sri Petaling Line,rail,Rapid KL (Prasarana),Klang Valley,true
+rail_lrt_kj,LRT Kelana Jaya Line,rail,Rapid KL (Prasarana),Klang Valley,true
+rail_lrt_shah_alam,LRT Shah Alam Line,rail,Rapid KL (Prasarana),Klang Valley,true
+rail_mrt_kajang,MRT Kajang Line,rail,Rapid KL (Prasarana),Klang Valley,true
+rail_mrt_pjy,MRT Putrajaya Line,rail,Rapid KL (Prasarana),Klang Valley,true
+rail_monorail,KL Monorail,rail,Rapid KL (Prasarana),Klang Valley,true
+rail_komuter,KTM Komuter (Klang Valley),rail,KTMB,Klang Valley,false
+rail_komuter_utara,KTM Komuter Utara,rail,KTMB,Northern,false
+rail_ets,KTM ETS,rail,KTMB,Intercity,false
+rail_intercity,KTM Intercity,rail,KTMB,Intercity,false
+rail_tebrau,KTM Shuttle Tebrau,rail,KTMB,Johor-Singapore,false
+bus_rkl,Rapid KL Bus,bus,Rapid Bus (Prasarana),Klang Valley,false
+bus_rkn,Rapid Kuantan Bus,bus,Rapid Bus (Prasarana),Kuantan,false
+bus_rpn,Rapid Penang Bus,bus,Rapid Bus (Prasarana),Penang,false

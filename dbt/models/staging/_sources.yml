@@ -1,0 +1,39 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Tables loaded by the dlt pipeline (`uv run elt load`). One table per source; see SOURCES.md.
+    schema: raw
+    tables:
+      - name: ridership_headline
+        description: Daily public transport ridership, one column per rail line / bus network (data.gov.my).
+        config:
+          loaded_at_field: "cast(date as timestamp)"
+          # Published with ~3 weeks lag.
+          freshness:
+            warn_after: {count: 35, period: day}
+            error_after: {count: 60, period: day}
+      - name: fuelprice
+        description: Weekly retail fuel prices (MOF via data.gov.my). Rows with series_type 'level' and 'change_weekly'.
+        config:
+          loaded_at_field: "cast(date as timestamp)"
+          freshness:
+            warn_after: {count: 10, period: day}
+            error_after: {count: 21, period: day}
+      - name: cpi_headline
+        description: Monthly CPI by MCOICOP division (DOSM). `date` is the first day of the month.
+        config:
+          loaded_at_field: "cast(date as timestamp)"
+          # Month M is published around the 18th-25th of M+1, so the latest row is normally 50-85 days old.
+          freshness:
+            warn_after: {count: 90, period: day}
+            error_after: {count: 120, period: day}
+      - name: mcoicop
+        description: DOSM MCOICOP lookup, codes to English and Malay names.
+      - name: bnm_exchange_rate
+        description: BNM exchange rates, 12:00 session, per business day.
+        config:
+          loaded_at_field: "cast(date as timestamp)"
+          freshness:
+            warn_after: {count: 5, period: day}
+            error_after: {count: 10, period: day}

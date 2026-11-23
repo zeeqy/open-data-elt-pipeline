@@ -1,0 +1,89 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Calendar dimension, one row per day from 2017-01-01.
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+
+  - name: dim_service
+    description: Public transport services (rail lines and bus networks) in the ridership data.
+    columns:
+      - name: service_code
+        data_tests: [unique, not_null]
+      - name: mode
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [rail, bus]
+
+  - name: dim_cpi_division
+    description: MCOICOP divisions (DOSM), plus 'overall'.
+    columns:
+      - name: division_code
+        data_tests: [unique, not_null]
+
+  - name: fct_ridership_daily
+    description: "Fact: riders per day per service. Grain: date_day x service_code."
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "date_day || '|' || service_code"
+    columns:
+      - name: date_day
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_day}
+      - name: service_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_service'), field: service_code}
+      - name: riders
+        data_tests: [not_null]
+
+  - name: fct_fuel_price_daily
+    description: "Fact: fuel prices in force each day (RM/litre). Grain: date_day."
+    columns:
+      - name: date_day
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_day}
+
+  - name: fct_fx_daily
+    description: "Fact: USD/MYR (BNM 12:00 middle rate), carried over non-business days. Grain: date_day."
+    columns:
+      - name: date_day
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_day}
+
+  - name: fct_cpi_monthly
+    description: "Fact: CPI index and year-on-year % by division. Grain: month_start x division_code."
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "month_start || '|' || division_code"
+    columns:
+      - name: division_code
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_cpi_division'), field: division_code}
+
+  - name: mart_transport_weekly
+    description: Weekly Rapid KL rail weekday ridership next to fuel prices and USD/MYR.
+    columns:
+      - name: week_start
+        data_tests: [unique, not_null]
+
+  - name: mart_transport_monthly
+    description: Monthly ridership, fuel prices, transport CPI and USD/MYR, for the dashboard.
+    columns:
+      - name: month_start
+        data_tests: [unique, not_null]

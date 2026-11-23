@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_ridership__daily
+    description: Daily ridership, one row per day and one column per service (wide, as published).
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+  - name: stg_fuel__prices
+    description: Weekly fuel price levels in RM per litre. A price applies from effective_date until the next row.
+    columns:
+      - name: effective_date
+        data_tests: [unique, not_null]
+      - name: ron97_price
+        data_tests: [not_null]
+      - name: ron95_citizen_price
+        description: What most citizens paid for RON95 (BUDI95 price from 2025-09-30, the single RON95 price before).
+        data_tests: [not_null]
+  - name: stg_cpi__division
+    description: Monthly CPI (2010 = 100) by MCOICOP division.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "month_start || '|' || division_code"
+    columns:
+      - name: division_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_dosm__mcoicop_divisions')
+                field: division_code
+  - name: stg_dosm__mcoicop_divisions
+    columns:
+      - name: division_code
+        data_tests: [unique, not_null]
+  - name: stg_bnm__usd_myr
+    columns:
+      - name: rate_date
+        data_tests: [unique, not_null]
+      - name: myr_per_unit
+        data_tests: [not_null]

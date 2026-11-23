@@ -21,7 +21,17 @@ def main(argv: list[str] | None = None) -> int:
         "--backfill", action="store_true", help="reload full history from the parquet bulk files"
     )
     load.add_argument("--only", nargs="+", choices=TABLES, help="load only these tables")
+    transform = sub.add_parser("transform", help="dbt source freshness + dbt build")
+    transform.add_argument("--skip-freshness", action="store_true")
+    sub.add_parser("docs", help="dbt docs generate (site in dbt/target/)")
     args = parser.parse_args(argv)
+
+    if args.command in ("transform", "docs"):
+        from open_data_elt import transform as tf
+
+        if args.command == "docs":
+            return 0 if tf.dbt(["docs", "generate"]) else 1
+        return 0 if tf.build(freshness=not args.skip_freshness) else 1
 
     if args.command == "probe":
         from open_data_elt import probe

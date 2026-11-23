@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: int_date_spine
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+  - name: int_ridership__long
+    description: Ridership per day per service, zeros and nulls removed (see model comment).
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "date_day || '|' || service_code"
+  - name: int_fuel__prices_daily
+    description: Fuel prices forward-filled to every day. Days before the first price (2017-01-01 to 2017-03-29) are dropped by the ASOF join.
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+  - name: int_fx__usd_myr_daily
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+      - name: usd_myr
+        data_tests: [not_null]
+
+unit_tests:
+  - name: fuel_price_fills_forward_until_next_update
+    description: A weekly price applies from its effective date until the day before the next one.
+    model: int_fuel__prices_daily
+    given:
+      - input: ref('int_date_spine')
+        rows:
+          - {date_day: 2026-11-11}
+          - {date_day: 2026-11-12}
+          - {date_day: 2026-11-18}
+          - {date_day: 2026-11-19}
+      - input: ref('stg_fuel__prices')
+        rows:
+          - {effective_date: 2026-11-12, ron97_price: 4.20, ron95_market_price: 3.87, ron95_citizen_price: 1.99, diesel_price: 4.87, is_budi95_period: true}
+          - {effective_date: 2026-11-19, ron97_price: 4.00, ron95_market_price: 3.72, ron95_citizen_price: 1.99, diesel_price: 4.72, is_budi95_period: true}
+    expect:
+      rows:
+        - {date_day: 2026-11-12, ron97_price: 4.20, is_price_update_day: true}
+        - {date_day: 2026-11-18, ron97_price: 4.20, is_price_update_day: false}
+        - {date_day: 2026-11-19, ron97_price: 4.00, is_price_update_day: true}
