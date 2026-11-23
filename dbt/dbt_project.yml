@@ -25,3 +25,6 @@ models:
 seeds:
   open_data:
     +schema: seeds
+
+flags:
+  send_anonymous_usage_stats: false
