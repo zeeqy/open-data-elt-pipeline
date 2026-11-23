@@ -3,6 +3,11 @@ open_data:
   outputs:
     dev:
       type: duckdb
-      # Relative to the dbt/ folder; `uv run elt transform` runs dbt from there.
+      # `uv run elt transform` sets DUCKDB_PATH; the default works when running dbt from dbt/.
       path: "{{ env_var('DUCKDB_PATH', '../data/warehouse.duckdb') }}"
+      threads: 4
+    motherduck:
+      type: duckdb
+      # Same models on MotherDuck (free Lite plan). Token from MOTHERDUCK_TOKEN.
+      path: "md:open_data"
       threads: 4

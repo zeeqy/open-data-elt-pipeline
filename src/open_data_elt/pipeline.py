@@ -9,12 +9,13 @@
 """
 
 import datetime as dt
+import sys
 from collections.abc import Iterable
 from pathlib import Path
 
 import dlt
 
-from open_data_elt import extract
+from open_data_elt import extract, warehouse
 from open_data_elt.sources import (
     BNM_CURRENCIES,
     BNM_START,
@@ -23,9 +24,12 @@ from open_data_elt.sources import (
 )
 
 DATASET = "raw"
-DUCKDB_PATH = Path("data/warehouse.duckdb")
 PIPELINES_DIR = Path("data/.dlt")
 SCHEMA_CONTRACT = {"tables": "evolve", "columns": "evolve", "data_type": "freeze"}
+
+
+def log(msg: str) -> None:
+    print(f"[load] {msg}", file=sys.stderr, flush=True)
 
 
 def _catalogue_resource(src: CatalogueSource, backfill: bool):
@@ -42,9 +46,11 @@ def _catalogue_resource(src: CatalogueSource, backfill: bool):
         state = dlt.current.resource_state()
         last = state.get("last_date")
         if backfill or last is None:
+            log(f"{src.id}: full load from parquet ({'backfill' if backfill else 'no state'})")
             rows = extract.fetch_parquet(src)
         else:
             since = dt.date.fromisoformat(last) - dt.timedelta(days=src.lookback_days)
+            log(f"{src.id}: incremental via API since {since} (last loaded {last})")
             rows, meta = extract.fetch_api(src, since)
             state["meta"] = meta  # data_as_of / next_update, kept for freshness checks
         if rows:
@@ -65,9 +71,11 @@ def _bnm_resource(backfill: bool, today: dt.date):
         last = state.get("last_date")
         if backfill or last is None:
             start = BNM_START
+            log(f"bnm_exchange_rate: full load from {start[0]}-{start[1]:02d}")
         else:  # re-pull the month of the last fixing, plus anything after it
             last_d = dt.date.fromisoformat(last)
             start = (last_d.year, last_d.month)
+            log(f"bnm_exchange_rate: incremental from {start[0]}-{start[1]:02d} (last {last})")
         newest = last
         for currency in BNM_CURRENCIES:
             for year, month in extract.months(start, today):
@@ -94,12 +102,11 @@ def my_open_data(backfill: bool = False, only: Iterable[str] | None = None, toda
     return resources
 
 
-def make_pipeline(destination=None, pipelines_dir: Path = PIPELINES_DIR):
-    if destination is None:
-        DUCKDB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        destination = dlt.destinations.duckdb(str(DUCKDB_PATH))
+def make_pipeline(destination=None, pipelines_dir: Path = PIPELINES_DIR, target: str = "local"):
+    # One pipeline name per target, so local and MotherDuck keep separate state.
+    destination = destination or warehouse.destination(target)
     return dlt.pipeline(
-        pipeline_name="open_data_elt",
+        pipeline_name="open_data_elt" if target == "local" else f"open_data_elt_{target}",
         destination=destination,
         dataset_name=DATASET,
         pipelines_dir=str(pipelines_dir),
@@ -112,7 +119,8 @@ def run(
     destination=None,
     pipelines_dir: Path = PIPELINES_DIR,
     today: dt.date | None = None,
+    target: str = "local",
 ):
-    pipeline = make_pipeline(destination, pipelines_dir)
+    pipeline = make_pipeline(destination, pipelines_dir, target)
     info = pipeline.run(my_open_data(backfill=backfill, only=only, today=today))
     return pipeline, info
