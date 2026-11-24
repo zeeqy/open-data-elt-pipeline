@@ -1,6 +1,7 @@
 name: pipeline
 
-# Daily ELT into MotherDuck: load (dlt) -> freshness + build + tests (dbt).
+# Daily ELT into MotherDuck: load (dlt) -> freshness + build + tests (dbt)
+# -> static site (dashboard + dbt docs) published to GitHub Pages.
 # Any failed step sends a Telegram alert with the error lines and a run link.
 on:
   schedule:
@@ -16,6 +17,8 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pipeline
@@ -58,13 +61,30 @@ jobs:
           set -o pipefail
           uv run elt transform --target motherduck 2>&1 | tee logs/transform.log
 
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Build site (dashboard + dbt docs)
+        id: site
+        run: |
+          set -o pipefail
+          npm ci --prefix dashboard
+          uv run elt site --target motherduck 2>&1 | tee logs/site.log
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dashboard/dist
+
       - name: Keep dbt results (test results, freshness)
         if: always() && steps.load.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dbt-results
           path: |
-            dbt/target/run_results.json
+            dbt/target/build_run_results.json
             dbt/target/sources.json
             logs/
           retention-days: 30
@@ -72,5 +92,16 @@ jobs:
       - name: Alert on failure
         if: failure()
         env:
-          STEP: ${{ steps.secrets.outcome == 'failure' && 'secrets' || steps.load.outcome == 'failure' && 'load' || steps.transform.outcome == 'failure' && 'transform' || 'setup' }}
+          STEP: ${{ steps.secrets.outcome == 'failure' && 'secrets' || steps.load.outcome == 'failure' && 'load' || steps.transform.outcome == 'failure' && 'transform' || steps.site.outcome == 'failure' && 'site' || 'setup' }}
         run: uv run elt alert --step "$STEP" --log "logs/$STEP.log"
+
+  deploy:
+    needs: elt
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -27,7 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     transform = sub.add_parser("transform", help="dbt source freshness + dbt build")
     transform.add_argument("--skip-freshness", action="store_true")
     docs = sub.add_parser("docs", help="dbt docs generate (site in dbt/target/)")
-    for p in (load, transform, docs):
+    site = sub.add_parser("site", help="build dashboard + dbt docs into dashboard/dist")
+    for p in (load, transform, docs, site):
         p.add_argument("--target", choices=["local", "motherduck"], default="local")
     alert = sub.add_parser("alert", help="send a Telegram failure alert")
     alert.add_argument("--step", required=True, help="name of the step that failed")
@@ -42,9 +43,11 @@ def main(argv: list[str] | None = None) -> int:
         al.send(al.build_message(args.step, Path(args.log) if args.log else None))
         return 0  # the alert itself never fails the job; the failed step already did
 
-    if args.command in ("transform", "docs"):
+    if args.command in ("transform", "docs", "site"):
         from open_data_elt import transform as tf
 
+        if args.command == "site":
+            return 0 if tf.site(target=args.target) else 1
         if args.command == "docs":
             return 0 if tf.dbt(["docs", "generate"], target=args.target) else 1
         return 0 if tf.build(freshness=not args.skip_freshness, target=args.target) else 1

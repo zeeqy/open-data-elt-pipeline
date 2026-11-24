@@ -1,0 +1,16 @@
+{
+  "name": "open-data-elt-dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node observable.mjs preview",
+    "build": "npm run clean && node observable.mjs build",
+    "clean": "node -e \"require('fs').rmSync('src/.observablehq/cache',{recursive:true,force:true})\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@observablehq/framework": "1.13.4"
+  }
+}

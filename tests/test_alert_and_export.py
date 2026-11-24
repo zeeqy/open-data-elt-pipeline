@@ -40,3 +40,27 @@ def test_send_posts_to_bot_and_hides_token_on_error(monkeypatch, capsys):
     assert ok.calls[0][1] == {"chat_id": "999", "text": "hi", "disable_web_page_preview": True}
     assert alert.send("hi", session=FakePost(401)) is False
     assert "secret" not in capsys.readouterr().out
+
+
+def test_dbt_test_summary_counts_tests_only(tmp_path):
+    import json
+
+    from open_data_elt.export import dbt_test_summary
+
+    path = tmp_path / "rr.json"
+    path.write_text(
+        json.dumps(
+            {
+                "metadata": {"generated_at": "2026-11-24T00:00:00Z"},
+                "results": [
+                    {"unique_id": "model.open_data.dim_date", "status": "success"},
+                    {"unique_id": "test.open_data.unique_x", "status": "pass"},
+                    {"unique_id": "unit_test.open_data.m.t", "status": "pass"},
+                    {"unique_id": "test.open_data.not_null_y", "status": "fail"},
+                ],
+            }
+        )
+    )
+    s = dbt_test_summary(path)
+    assert (s["total"], s["by_status"]) == (3, {"pass": 2, "fail": 1})
+    assert s["failed"] == ["test.open_data.not_null_y"]
