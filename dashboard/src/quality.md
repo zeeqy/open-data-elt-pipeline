@@ -39,12 +39,8 @@ Every morning a GitHub Actions job loads the sources with dlt, then dbt checks f
 
 The full model graph, column docs and tests are in the **[dbt docs site](./dbt-docs/index.html)** (open the graph icon, bottom right).
 
-```mermaid
-flowchart LR
-  A[data.gov.my API + parquet] --> R[(raw)]
-  B[BNM Open API] --> R
-  R --> S[staging]
-  S --> I[intermediate]
-  I --> M[marts: dims + facts]
-  M --> D[this dashboard]
-```
+<div class="card" style="font-family: var(--monospace); font-size: 14px; line-height: 2;">
+data.gov.my API + parquet, BNM API &rarr; <b>dlt</b> &rarr; raw &rarr; <b>dbt</b>: staging &rarr; intermediate &rarr; marts (dims + facts) &rarr; this dashboard
+</div>
+
+<div class="note">Plain HTML instead of a Mermaid diagram on purpose: Mermaid added 44 MB to this 2-page site. The Mermaid version is in docs/ARCHITECTURE.md on GitHub.</div>

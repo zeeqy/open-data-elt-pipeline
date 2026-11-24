@@ -6,13 +6,15 @@ from pathlib import Path
 
 from dbt.cli.main import dbtRunner
 
+from open_data_elt import warehouse
+
 DBT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 # `dbt docs generate` overwrites run_results.json, so keep the build's copy.
 BUILD_RESULTS = DBT_DIR / "target" / "build_run_results.json"
 
 
 def dbt(
-    args: list[str], duckdb_path: Path | str = "data/warehouse.duckdb", target: str = "local"
+    args: list[str], duckdb_path: Path | str = warehouse.DUCKDB_PATH, target: str = "local"
 ) -> bool:
     """Run one dbt command; returns True on success."""
     os.environ["DUCKDB_PATH"] = str(Path(duckdb_path).resolve())
@@ -32,7 +34,7 @@ def dbt(
 
 
 def build(
-    duckdb_path: Path | str = "data/warehouse.duckdb",
+    duckdb_path: Path | str = warehouse.DUCKDB_PATH,
     freshness: bool = True,
     target: str = "local",
 ) -> bool:
@@ -70,7 +72,7 @@ def site(target: str = "local") -> bool:
         "--target",
         "dev" if target == "local" else target,
     ]
-    env = {**os.environ, "DUCKDB_PATH": str(Path("data/warehouse.duckdb").resolve())}
+    env = {**os.environ, "DUCKDB_PATH": str(Path(warehouse.DUCKDB_PATH).resolve())}
     if subprocess.run(dbt_cmd, env=env).returncode != 0:
         return False
     npm = shutil.which("npm")

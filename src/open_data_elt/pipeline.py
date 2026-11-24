@@ -24,7 +24,7 @@ from open_data_elt.sources import (
 )
 
 DATASET = "raw"
-PIPELINES_DIR = Path("data/.dlt")
+PIPELINES_DIR = warehouse.PIPELINES_DIR
 SCHEMA_CONTRACT = {"tables": "evolve", "columns": "evolve", "data_type": "freeze"}
 
 

@@ -14,3 +14,4 @@ dbt/dbt_packages/
 node_modules/
 data/.dlt/
 dbt/.user.yml
+data/drill/

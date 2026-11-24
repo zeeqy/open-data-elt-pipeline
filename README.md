@@ -16,6 +16,7 @@ uv run elt docs               # dbt docs site -> dbt/target/index.html
 npm ci --prefix dashboard     # once: Observable Framework (Node 20+)
 uv run elt site               # dashboard + dbt docs -> dashboard/dist (static, for GitHub Pages)
 npm run dev --prefix dashboard  # live preview at http://127.0.0.1:3000
+uv run elt drill              # incident drill: simulated column rename, on a copy (docs/INCIDENT.md)
 uv run pytest                 # offline tests incl. a full dbt build on synthetic data (-m live for real APIs)
 ```
 

@@ -27,6 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     transform = sub.add_parser("transform", help="dbt source freshness + dbt build")
     transform.add_argument("--skip-freshness", action="store_true")
     docs = sub.add_parser("docs", help="dbt docs generate (site in dbt/target/)")
+    sub.add_parser("drill", help="incident drill: simulate a renamed source column (on a copy)")
     site = sub.add_parser("site", help="build dashboard + dbt docs into dashboard/dist")
     for p in (load, transform, docs, site):
         p.add_argument("--target", choices=["local", "motherduck"], default="local")
@@ -34,6 +35,11 @@ def main(argv: list[str] | None = None) -> int:
     alert.add_argument("--step", required=True, help="name of the step that failed")
     alert.add_argument("--log", help="step log; its error lines go into the message")
     args = parser.parse_args(argv)
+
+    if args.command == "drill":
+        from open_data_elt import drill
+
+        return drill.main()
 
     if args.command == "alert":
         from pathlib import Path

@@ -1,0 +1,42 @@
+Copied data\warehouse.duckdb -> data\drill\warehouse.duckdb (dlt state restores from it).
+   [before] raw.fuelprice rows=975, level rows with NULL ron97 since 2018=0, column ron97_price exists=False
+   [before] latest (date, ron97): [('2026-11-19', 4.0), ('2026-11-12', 4.2), ('2026-11-05', 4.7)]
+
+== 1. Source renames ron97 -> ron97_price, guard ON (normal pipeline)
+
+$ ELT_DRILL_RENAME=fuelprice:ron97=ron97_price elt load --only fuelprice   -> exit 1
+   [load] fuelprice: incremental via API since 2026-10-15 (last loaded 2026-11-19)
+   LOAD FAILED: SchemaDriftError: fuelprice: required column(s) ['ron97'] missing from source. Columns received: ['date', 'diesel', 'diesel_budi', 'diesel_eastmsia', 'diesel_skds', 'ron95', 'ron95_budi95', 'ron95_skps', 'ro
+   [after 1] raw.fuelprice rows=975, level rows with NULL ron97 since 2018=0, column ron97_price exists=False
+   [after 1] latest (date, ron97): [('2026-11-19', 4.0), ('2026-11-12', 4.2), ('2026-11-05', 4.7)]
+   Telegram alert text:
+      [FAILED] open-data-elt pipeline, step: load
+      
+      LOAD FAILED: SchemaDriftError: fuelprice: required column(s) ['ron97'] missing from source. Columns received: ['date', 'diesel', 'diesel_budi', 'diesel_eastmsia', 'diesel_skds', 'ron95', 'ron95_budi95', 'ron95_skps', 'ron97_price', 'series_type']. Did the source rename a column?
+
+== 2. Same rename, guard OFF (what a pipeline without the check would do)
+
+$ ELT_DRILL_RENAME=fuelprice:ron97=ron97_price ELT_DRILL_SKIP_GUARD=1 elt load --only fuelprice   -> exit 0
+   [drill] guard OFF: fuelprice missing ['ron97'], loading anyway
+   raw.fuelprice                975 rows
+   [load] fuelprice: incremental via API since 2026-10-15 (last loaded 2026-11-19)
+   [after 2 load] raw.fuelprice rows=975, level rows with NULL ron97 since 2018=6, column ron97_price exists=True
+   [after 2 load] latest (date, ron97, ron97_price): [('2026-11-19', None, 4.0), ('2026-11-12', None, 4.2), ('2026-11-05', None, 4.7)]
+
+$ elt transform --skip-freshness   -> exit 1
+   04:37:29  12 of 69 FAIL 6 not_null_stg_fuel__prices_ron97_price .......................... [FAIL 6 in 0.08s]
+   04:37:30  Done. PASS=39 WARN=0 ERROR=1 SKIP=29 NO-OP=0 REUSED=0 TOTAL=69
+
+== 3. Source fixed; next normal run
+
+$ elt load --only fuelprice   -> exit 0
+   raw.fuelprice                975 rows
+   [load] fuelprice: incremental via API since 2026-10-15 (last loaded 2026-11-19)
+   [after 3 load] raw.fuelprice rows=975, level rows with NULL ron97 since 2018=0, column ron97_price exists=True
+   [after 3 load] latest (date, ron97, ron97_price): [('2026-11-19', 4.0, None), ('2026-11-12', 4.2, None), ('2026-11-05', 4.7, None)]
+
+$ elt transform --skip-freshness   -> exit 0
+   04:37:58  Done. PASS=69 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=69
+
+Drill outcome as expected: True (True, True, True, True, True)
+Full logs in data\drill/

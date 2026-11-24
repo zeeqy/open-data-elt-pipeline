@@ -10,7 +10,10 @@ from pathlib import Path
 import dlt
 
 TARGETS = ("local", "motherduck")
-DUCKDB_PATH = Path("data/warehouse.duckdb")
+# ELT_DATA_DIR lets `elt drill` run the real commands against a copy.
+DATA_DIR = Path(os.environ.get("ELT_DATA_DIR", "data"))
+DUCKDB_PATH = DATA_DIR / "warehouse.duckdb"
+PIPELINES_DIR = DATA_DIR / ".dlt"
 MOTHERDUCK_DATABASE = "open_data"
 
 

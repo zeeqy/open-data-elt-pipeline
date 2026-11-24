@@ -8,6 +8,7 @@ becomes None and measure columns become float.
 import calendar
 import datetime as dt
 import math
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -30,10 +31,32 @@ class SchemaDriftError(RuntimeError):
     """A column the models depend on is missing from the source."""
 
 
+# Incident drill hooks (see docs/INCIDENT.md and `elt drill`). Both are off
+# unless the environment variable is set, and only `elt drill` sets them.
+#   ELT_DRILL_RENAME="fuelprice:ron97=ron97_price"  pretend the source renamed a column
+#   ELT_DRILL_SKIP_GUARD=1                          turn the required-column check off
+def drill_renames(src: CatalogueSource) -> dict[str, str]:
+    spec = os.environ.get("ELT_DRILL_RENAME", "")
+    out = {}
+    for item in filter(None, spec.split(",")):
+        table, _, mapping = item.partition(":")
+        old, _, new = mapping.partition("=")
+        if table == src.id and old and new:
+            out[old] = new
+    return out
+
+
+def apply_drill_renames(row: dict, renames: dict[str, str]) -> dict:
+    return {renames.get(k, k): v for k, v in row.items()} if renames else row
+
+
 def check_columns(columns: list[str] | set[str], src: CatalogueSource) -> set[str]:
     """Fail if a required column is gone; return the set of new, unexpected columns."""
     cols = set(columns)
     missing = set(src.required_columns) - cols
+    if missing and os.environ.get("ELT_DRILL_SKIP_GUARD") == "1":
+        print(f"[drill] guard OFF: {src.id} missing {sorted(missing)}, loading anyway")
+        return cols - set(src.required_columns)
     if missing:
         raise SchemaDriftError(
             f"{src.id}: required column(s) {sorted(missing)} missing from source. "
@@ -72,6 +95,8 @@ def normalize_row(row: dict, src: CatalogueSource, origin: str) -> dict:
 
 
 def _rows_checked(rows: list[dict], src: CatalogueSource, origin: str) -> list[dict]:
+    renames = drill_renames(src)
+    rows = [apply_drill_renames(r, renames) for r in rows]
     if rows:
         columns = set().union(*(r.keys() for r in rows))
         check_columns(columns, src)
@@ -102,7 +127,8 @@ def fetch_parquet(src: CatalogueSource, raw_dir: Path = RAW_DIR) -> list[dict]:
 def read_parquet_rows(path: Path, src: CatalogueSource) -> list[dict]:
     con = duckdb.connect()
     cur = con.execute(f"select * from read_parquet('{path.as_posix()}')")
-    columns = [d[0] for d in cur.description]
+    renames = drill_renames(src)
+    columns = [renames.get(d[0], d[0]) for d in cur.description]
     check_columns(columns, src)
     rows = (dict(zip(columns, r, strict=True)) for r in cur.fetchall())
     return [normalize_row(r, src, "parquet") for r in rows]

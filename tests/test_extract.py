@@ -99,3 +99,27 @@ def test_http_spaces_calls_to_data_gov(monkeypatch):
     for _ in range(2):
         http.get("https://api.data.gov.my/data-catalogue/", session=session, sleep=waits.append)
     assert len(waits) == 1 and 14.0 < waits[0] <= 15.0
+
+
+def test_drill_rename_hook_is_off_by_default_and_caught_when_on(monkeypatch, tmp_path):
+    from open_data_elt.extract import _rows_checked, drill_renames
+
+    row = {
+        "date": "2026-11-19",
+        "series_type": "level",
+        "ron95": 3.72,
+        "ron97": 4.0,
+        "diesel": 4.72,
+    }
+    monkeypatch.delenv("ELT_DRILL_RENAME", raising=False)
+    assert drill_renames(FUEL) == {}
+    assert _rows_checked([row], FUEL, "api")[0]["ron97"] == 4.0
+
+    monkeypatch.setenv("ELT_DRILL_RENAME", "fuelprice:ron97=ron97_price,cpi_headline:index=idx")
+    assert drill_renames(FUEL) == {"ron97": "ron97_price"}
+    with pytest.raises(SchemaDriftError):
+        _rows_checked([row], FUEL, "api")
+
+    monkeypatch.setenv("ELT_DRILL_SKIP_GUARD", "1")
+    loaded = _rows_checked([row], FUEL, "api")[0]
+    assert "ron97" not in loaded and loaded["ron97_price"] == 4.0
