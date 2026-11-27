@@ -1,6 +1,7 @@
 name: pipeline
 
-# Daily ELT into MotherDuck: load (dlt) -> freshness + build + tests (dbt)
+# Daily ELT into MotherDuck (or a local DuckDB file in the runner when the
+# MOTHERDUCK_TOKEN secret is missing): load (dlt) -> freshness + build + tests (dbt)
 # -> static site (dashboard + dbt docs) published to GitHub Pages.
 # Any failed step sends a Telegram alert with the error lines and a run link.
 on:
@@ -33,6 +34,8 @@ jobs:
   elt:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      pages: ${{ steps.pages.outputs.enabled }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -41,25 +44,50 @@ jobs:
       - run: uv sync --locked
       - run: mkdir -p logs
 
-      - name: Check secrets
+      # No MotherDuck token (not signed up yet) -> run on a local DuckDB file in
+      # the runner. It starts empty, so dlt finds no state and does a full load
+      # from the parquet bulk files; the site is still built and published.
+      - name: Pick warehouse
         id: secrets
         run: |
-          if [ -z "$MOTHERDUCK_TOKEN" ]; then
-            echo "ERROR: MOTHERDUCK_TOKEN secret is not set" | tee logs/secrets.log
-            exit 1
+          if [ -n "$MOTHERDUCK_TOKEN" ]; then
+            echo "target=motherduck" >> "$GITHUB_OUTPUT"
+            echo "Warehouse: MotherDuck" | tee logs/secrets.log
+          else
+            echo "target=local" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No MotherDuck token::MOTHERDUCK_TOKEN is not set, so this run uses a local DuckDB file in the runner (full reload from the parquet bulk files). Add the secret to switch to MotherDuck."
+            echo "Warehouse: local DuckDB (MOTHERDUCK_TOKEN not set)" | tee logs/secrets.log
+          fi
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "::notice title=No Telegram secrets::Failure alerts will be printed in the log instead of sent."
+          fi
+
+      # Pages must be switched on once (Settings -> Pages -> Source: GitHub
+      # Actions). Until then the site is built but the deploy job is skipped.
+      - name: Check GitHub Pages
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url > logs/pages.txt 2>/dev/null; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Pages: $(cat logs/pages.txt)"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=GitHub Pages is off::Site built but not published. Turn on Settings -> Pages -> Source: GitHub Actions."
           fi
 
       - name: Extract + load (dlt)
         id: load
         run: |
           set -o pipefail
-          uv run elt load --target motherduck ${{ inputs.backfill && '--backfill' || '' }} 2>&1 | tee logs/load.log
+          uv run elt load --target ${{ steps.secrets.outputs.target }} ${{ inputs.backfill && '--backfill' || '' }} 2>&1 | tee logs/load.log
 
       - name: Freshness + build + tests (dbt)
         id: transform
         run: |
           set -o pipefail
-          uv run elt transform --target motherduck 2>&1 | tee logs/transform.log
+          uv run elt transform --target ${{ steps.secrets.outputs.target }} 2>&1 | tee logs/transform.log
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -72,7 +100,7 @@ jobs:
         run: |
           set -o pipefail
           npm ci --prefix dashboard
-          uv run elt site --target motherduck 2>&1 | tee logs/site.log
+          uv run elt site --target ${{ steps.secrets.outputs.target }} 2>&1 | tee logs/site.log
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
@@ -97,6 +125,7 @@ jobs:
 
   deploy:
     needs: elt
+    if: needs.elt.outputs.pages == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
