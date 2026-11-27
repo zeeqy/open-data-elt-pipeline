@@ -8,7 +8,7 @@
 
 ![Dashboard](docs/dashboard.jpg)
 
-Live dashboard + dbt docs: *GitHub Pages link goes here after the first scheduled run* · [Architecture](docs/ARCHITECTURE.md) · [Incident drill](docs/INCIDENT.md) · [Sources](SOURCES.md)
+Docs: [Architecture](docs/ARCHITECTURE.md) · [Incident drill](docs/INCIDENT.md) · [Sources](SOURCES.md)
 
 ## Problem
 
