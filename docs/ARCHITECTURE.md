@@ -66,4 +66,4 @@ Limits checked 2026-11-23 on each provider's pricing page. MotherDuck Lite needs
 
 ## Local vs cloud
 
-Every command takes `--target local|motherduck`. Local uses `data/warehouse.duckdb`; tests and CI use small synthetic data and never call the APIs. The scheduled workflow is the only thing that writes to MotherDuck.
+Every command takes `--target local|motherduck`. Local uses `data/warehouse.duckdb`; tests and CI use small synthetic data and never call the APIs. The scheduled workflow is the only thing that writes to MotherDuck; when the `MOTHERDUCK_TOKEN` secret is missing it falls back to a local DuckDB file in the runner (full reload from the parquet bulk files) and still builds the site.

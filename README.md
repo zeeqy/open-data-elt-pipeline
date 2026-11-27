@@ -62,7 +62,7 @@ flowchart LR
   C -. on failure .-> T["Telegram alert"]
 ```
 
-Warehouse = MotherDuck in the scheduled job, a local DuckDB file otherwise (same SQL). More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), lineage graph in [docs/lineage.jpg](docs/lineage.jpg).
+Warehouse = MotherDuck in the scheduled job when the token secret is set, a local DuckDB file otherwise (same SQL). More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), lineage graph in [docs/lineage.jpg](docs/lineage.jpg).
 
 ## How to run
 
@@ -83,7 +83,7 @@ uv run pytest                   # offline tests (add -m live for real-API tests)
 
 Add `--target motherduck` to `load`, `transform` or `site` to use MotherDuck (put `MOTHERDUCK_TOKEN` in `.env`, see `.env.example`).
 
-**Scheduled run** (`.github/workflows/pipeline.yml`, 09:30 MYT daily, or manual with a *backfill* tick box). Repo secrets: `MOTHERDUCK_TOKEN` (required), `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (optional). Settings → Pages → Source: GitHub Actions.
+**Scheduled run** (`.github/workflows/pipeline.yml`, 09:30 MYT daily, or manual with a *backfill* tick box). Repo secrets (all optional): `MOTHERDUCK_TOKEN` (without it the run uses a local DuckDB file in the runner and reloads from the parquet bulk files), `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (without them the alert is printed in the log). Settings → Pages → Source: GitHub Actions (until then the site is built but the deploy job is skipped with a notice).
 
 ## Limitations
 

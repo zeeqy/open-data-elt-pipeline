@@ -52,6 +52,7 @@ Every morning a GitHub Actions job pulls Malaysian open data (daily rail and bus
 
 - **No causal model.** "I checked for an obvious weekly link and found none. Proving there is no effect would need controls for holidays, fares and new lines; that was out of scope."
 - **The cloud path is the least proven part.** "Everything runs and is tested on local DuckDB; the MotherDuck target uses the same code, and I verified dlt restores its state from the warehouse. I'll know real compute usage after a month of runs."
+- **The daily run failed for three days (25-27 Nov 2026).** "The workflow hard-failed when the MotherDuck secret was missing, so the repo showed a red badge before I had even signed up. I changed it to pick the warehouse at run time: no token means a local DuckDB file in the runner and a full reload from the bulk files, and Pages being off skips the deploy with a notice. Missing optional config should degrade, not fail."
 - **Small data.** "About 11 MB. The project is about reliability: incremental loads, drift handling, tests, alerts. Those carry over to bigger data."
 - **Hand-written service names.** "The source gives only column names, so names come from a 14-row seed, and a test fails if an unknown service appears."
 - **The incident is simulated.** "I injected the rename with an environment variable and ran the real commands on a copy of the warehouse. It is a drill, and I say so in the doc."
