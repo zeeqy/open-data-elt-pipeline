@@ -2,6 +2,8 @@
 
 **A daily, tested ELT pipeline for Malaysian open data: dlt loads public transport ridership, fuel prices, CPI and BNM exchange rates into DuckDB/MotherDuck, dbt models them into a star schema, and a static dashboard asks whether fuel prices move public transport use. Running cost: RM 0.**
 
+**Live dashboard:** [zeeqy.github.io/open-data-elt-pipeline](https://zeeqy.github.io/open-data-elt-pipeline/) (rebuilt daily by the pipeline)
+
 [![ci](https://github.com/zeeqy/open-data-elt-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/zeeqy/open-data-elt-pipeline/actions/workflows/ci.yml)
 
 ![Dashboard](docs/dashboard.jpg)
